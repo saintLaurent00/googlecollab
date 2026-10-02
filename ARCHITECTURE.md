@@ -1,96 +1,93 @@
-# Architecture
+# Production Architecture
 
-## System boundary
+## Topology
 
-The trading logic is independent from the execution venue.
-
-```
-                    Trading Engine
-                         |
-                   Execution Port
-                    /           \
-             Simulator          MT5
-```
+MT5 Terminal (real account)
+→ MT5 Gateway
+→ authenticated connection
+→ Rust Trading Engine
+→ Decision/Risk/Batch/Order Management
+→ MT5 Gateway
+→ Broker
 
 ## Engines
 
-### Market Data
-Provides historical/replayed market events and builds H1, M15 and M1 market views.
+- Market Data
+- Market Regime
+- Setup
+- Entry
+- Decision
+- Risk
+- Batch
+- Position
+- Exit
+- Execution
+- State
 
-### Market Regime Engine
-Classifies the current environment:
+## MT5 Gateway
 
-- UPTREND
-- DOWNTREND
-- RANGE
-- UNKNOWN
+The gateway is the only component allowed to communicate with MetaTrader 5.
 
-It also tracks trend strength and volatility.
+Responsibilities:
+- connect to terminal
+- retrieve account state
+- retrieve ticks and candles
+- retrieve positions
+- validate orders
+- send orders
+- close/modify positions
+- report execution results
+- expose connection health
 
-### Setup Engine
-Finds and scores Supply/Demand zones, validates retests and evaluates M15 structure.
+## Real execution lifecycle
 
-### Entry Engine
-Works on M1 and identifies the precise micro-entry using microstructure, momentum and EMA context.
+MT5 tick
+→ Market State
+→ Regime
+→ Setup
+→ M1 Entry
+→ Decision
+→ Risk
+→ Order Request
+→ order_check
+→ order_send
+→ Broker
+→ Position Synchronization
 
-### Decision Engine
-Consumes market, setup, batch and risk state and emits controlled actions:
+## Position synchronization
 
-- WAIT
-- CREATE_BATCH
-- OPEN_POSITION
-- HOLD
-- MODIFY_POSITION
-- CLOSE_POSITION
-- CLOSE_BATCH
-- STOP_BATCH
-- EMERGENCY_CLOSE
+Local state is never assumed to be authoritative.
 
-### Risk Engine
-Authorizes or rejects actions based on exposure, drawdown, execution cost, volatility and configured risk limits.
+At startup and continuously:
+MT5 positions → Position Sync → Local State → Batch State
 
-### Batch Engine
-Creates and manages groups of micro-trades. The working baseline is 7 positions, configurable.
+This handles restarts, rejected orders, manual intervention and connection loss.
 
-### Position Engine
-Maintains the complete state of every open and closed position.
+## Order identity
 
-### Execution Engine
-Translates approved actions into execution requests through an ExecutionPort.
+Every bot order uses a unique magic number and correlation ID.
 
-### Exit Engine
-Evaluates batch and position exits using P&L, microstructure, momentum, time-in-trade and risk state.
+The bot must distinguish its own positions from manual positions and other EAs and must never close unrelated positions.
 
-### Performance Engine
-Computes trading statistics from simulation results.
+## Failure policy
 
-## Event flow
+If MT5 connectivity is lost:
+- stop opening new positions
+- mark market/account state stale
+- reconnect
+- resynchronize positions
+- resume only after synchronization succeeds
 
-```
-MarketEvent
-    ↓
-State Update
-    ↓
-Strategy Analysis
-    ↓
-Decision
-    ↓
-Risk Authorization
-    ↓
-Order
-    ↓
-Execution
-    ↓
-Position Update
-    ↓
-Portfolio / Batch Update
-```
+## Deployment
 
-## Design principles
+Recommended:
+Google Colab / Rust Engine
+→ authenticated outbound connection
+→ Windows VPS
+→ MT5 Terminal + MT5 Gateway
 
-1. Simulation and live execution use the same trading logic.
-2. The strategy never bypasses the risk layer.
-3. Market state, setup state, batch state and portfolio state remain explicit.
-4. No future market data may enter a decision made at an earlier timestamp.
-5. Transaction costs and execution effects are part of evaluation.
-6. Parameters are configurable and must be validated through out-of-sample testing.
+A local Windows host can be used during development.
+
+## Security
+
+Credentials belong only in environment variables or a secret manager.
