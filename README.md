@@ -1,69 +1,40 @@
 # GoogleCollab
 
-Automated XAUUSD micro-scalping research and simulation engine.
+Automated XAUUSD micro-scalping system connected to a real MetaTrader 5 account.
 
 ## Objective
 
-Build an automated trading system that can identify market conditions, detect trading setups, manage batches of micro-trades, and evaluate the strategy in a fully simulated environment before any live broker integration.
+Analyze XAUUSD, detect short-duration opportunities, manage batches of micro-trades, and send real orders to MetaTrader 5 through a dedicated execution gateway.
+
+This repository is designed for real execution. Strict risk controls are mandatory. Initial operation should use a demo account or minimal permitted exposure.
 
 ## Timeframes
 
-- **H1** — market context and major structure
-- **M15** — setup and Supply/Demand retest validation
-- **M1** — precise micro-scalping entry trigger
-- **Tick data** — execution and position monitoring when available
+- H1 — market context and major structure
+- M15 — setup and Supply/Demand retest
+- M1 — precise micro-scalping entry
+- Ticks — real-time execution and monitoring
 
-## Core flow
+## Production flow
 
-Market Data → Market Regime → Setup → Entry → Decision → Risk → Batch → Execution → Exit → Performance
+MT5 → Gateway → Market Data → Regime → Setup → M1 Entry → Decision → Risk → Batch → Order Manager → MT5
 
-## Simulation first
+## Execution boundary
 
-The first execution target is a virtual broker. No real orders are part of the initial system.
+The Rust trading engine is broker-agnostic. A dedicated MT5 gateway handles communication with the installed MetaTrader 5 terminal.
 
-The same trading engine will later be able to target different execution adapters:
+The official MetaTrader Python integration communicates with the terminal; therefore the gateway must run on a machine where MT5 is installed and logged into the target account. Google Colab is the research/engine environment, not the MT5 terminal.
 
-- Simulator
-- MT5/Broker adapter
+## Batch
 
-## Batch model
+Working baseline: XAUUSD, 7 positions, configurable.
 
-A batch groups multiple micro-trades and is managed collectively.
+Batch closure depends on aggregate P&L, profitable-position count, exposure, drawdown, market state and execution conditions. Green-position count alone is never sufficient.
 
-The initial design uses a configurable batch size (7 as the working baseline), while decisions are based on:
+## Security
 
-- profitable-position count
-- aggregate batch P&L
-- exposure
-- drawdown
-- market regime
-- setup validity
-- execution costs
-
-A profitable-position count alone is never sufficient to close a batch.
-
-## Architecture
-
-```
-H1
- ↓
-Market Regime
- ↓
-M15 Setup
- ↓
-M1 Entry
- ↓
-Decision Engine
- ↓
-Risk Engine
- ↓
-Batch Engine
- ↓
-Simulated Broker
- ↓
-Exit / Performance
-```
+Never commit MT5 credentials or gateway tokens.
 
 ## Status
 
-Architecture phase → simulation core implementation.
+Real MT5 execution architecture.
