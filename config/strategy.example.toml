@@ -1,0 +1,25 @@
+# Working configuration — values are placeholders until validated by backtesting.
+
+[symbol]
+name = "XAUUSD"
+
+[timeframes]
+context = "H1"
+setup = "M15"
+entry = "M1"
+
+[batch]
+baseline_size = 7
+min_profitable_positions = 6
+
+[risk]
+max_batch_exposure = 0.0
+max_drawdown = 0.0
+
+[execution]
+max_spread = 0.0
+slippage = 0.0
+
+[simulation]
+initial_balance = 10000.0
+commission = 0.0
